@@ -2,6 +2,7 @@ use ak820ctl::ambient;
 use ak820ctl::device::{self, Keyboard, Via};
 use ak820ctl::proto::{self, Light};
 use ak820ctl::screen;
+use ak820ctl::watchdog;
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use hidapi::HidApi;
@@ -78,6 +79,27 @@ enum Cmd {
         /// default, nome de tecla com ctrl+/shift+/alt+/win+, key:0xNN, ou media:<volup|voldown|mute|play|next|prev|stop|calc|mail|browser|mycomputer>
         action: String,
     },
+    /// Reinicia o dongle 2.4G quando ele trava (Linux): age depois de silêncio que segue atividade
+    Watchdog {
+        /// Só registra o que faria, sem reiniciar
+        #[arg(long)]
+        dry_run: bool,
+        /// Segundos de silêncio, depois de uma tecla, até reiniciar
+        #[arg(long, default_value_t = 30)]
+        silence: u64,
+        /// Segundos de silêncio em que reinicia a cada --silence; depois o intervalo dobra
+        #[arg(long, default_value_t = 900)]
+        fast_window: u64,
+        /// Primeiro intervalo depois da janela, em segundos
+        #[arg(long, default_value_t = 60)]
+        backoff_start: u64,
+        /// Intervalo máximo, em segundos
+        #[arg(long, default_value_t = 1800)]
+        backoff_max: u64,
+        /// Segundos sem atividade até desarmar (volta na próxima tecla)
+        #[arg(long, default_value_t = 7200)]
+        give_up: u64,
+    },
     /// Envia uma imagem, GIF ou vídeo curto para a tela de 128×128 (cabo)
     Screen {
         /// PNG, JPG, GIF ou vídeo (mp4, webm, mkv, mov, avi; vídeo usa o ffmpeg)
@@ -119,6 +141,17 @@ fn main() -> Result<()> {
         Cmd::Keys { list: true, .. } => {
             println!("{}", proto::KEYS.iter().map(|k| k.0).collect::<Vec<_>>().join(" "));
             return Ok(());
+        }
+        &Cmd::Watchdog { dry_run, silence, fast_window, backoff_start, backoff_max, give_up } => {
+            let s = std::time::Duration::from_secs;
+            let policy = watchdog::Policy {
+                silence: s(silence.max(1)),
+                fast_window: s(fast_window),
+                backoff_start: s(backoff_start.max(1)),
+                backoff_max: s(backoff_max.max(backoff_start)),
+                give_up: s(give_up),
+            };
+            return watchdog::run(policy, dry_run);
         }
         _ => {}
     }
@@ -232,7 +265,7 @@ fn main() -> Result<()> {
             kb.remap(k.1, &a)?;
             println!("{} → {:?}", k.0, a);
         }
-        Cmd::List | Cmd::Modes | Cmd::Screen { .. } => unreachable!(),
+        Cmd::List | Cmd::Modes | Cmd::Screen { .. } | Cmd::Watchdog { .. } => unreachable!(),
     }
     Ok(())
 }

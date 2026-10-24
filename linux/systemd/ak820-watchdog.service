@@ -1,0 +1,15 @@
+[Unit]
+Description=AK820 Pro: reinicia o dongle 2.4G quando ele trava
+Documentation=file://%h/.local/share/doc/ak820ctl/README.md
+
+[Service]
+Type=simple
+# Valores padrão; os do ak820.env têm prioridade.
+Environment=AK820_WD_SILENCE=30 AK820_WD_FAST_WINDOW=900 AK820_WD_BACKOFF_START=60 AK820_WD_BACKOFF_MAX=1800 AK820_WD_GIVE_UP=7200
+EnvironmentFile=-%h/.config/ak820ctl/ak820.env
+ExecStart=%h/.local/bin/ak820ctl watchdog --silence ${AK820_WD_SILENCE} --fast-window ${AK820_WD_FAST_WINDOW} --backoff-start ${AK820_WD_BACKOFF_START} --backoff-max ${AK820_WD_BACKOFF_MAX} --give-up ${AK820_WD_GIVE_UP}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

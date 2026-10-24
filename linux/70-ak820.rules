@@ -2,3 +2,5 @@
 KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="8009", TAG+="uaccess"
 KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a", TAG+="uaccess"
 KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="fdfd", TAG+="uaccess"
+# Nó USB do dongle: deixa o watchdog (ak820-watchdog.service) reiniciar o dongle sem sudo.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0c45", ATTR{idProduct}=="fdfd", TAG+="uaccess"

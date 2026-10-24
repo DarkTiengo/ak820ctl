@@ -22,6 +22,7 @@ Os dois podem ficar abertos junto com o programa oficial: as respostas que o pro
 | `remap <tecla> <função>`: troca a função de uma tecla (salva no teclado) | ainda não* | ✅ |
 | `screen arquivo [--pad]`: imagem, GIF ou vídeo curto na tela de 128×128 | ✅ | ❌ (o firmware original não aceita) |
 | `hyperhdr --host IP`: acompanha as cores do HyperHDR | ✅ tempo real | ✅ com limite |
+| `watchdog`: reinicia o dongle quando ele trava (só Linux) | — | ✅ |
 
 \* Falta capturar o comando pelo cabo. A troca feita pelo dongle fica salva no teclado e vale também no cabo.
 
@@ -72,6 +73,27 @@ O programa lê as cores que o HyperHDR já está mandando para as fitas, pela AP
 
 Se a conexão cair, ele tenta de novo a cada 5 s.
 
+## Watchdog do dongle (Linux)
+
+O firmware do dongle não liga o watchdog do próprio chip. Quando o rádio dele trava, o dongle continua conectado no USB, mas para de entregar as teclas até ser replugado, ou até reiniciar o PC. O `ak820ctl watchdog` faz esse reinício sozinho, com o mesmo reset USB do `usbreset`:
+
+- só começa a agir depois de ver uma tecla chegar pelo dongle; com o teclado no Bluetooth, não faz nada;
+- depois de uma tecla, se o dongle ficar **30 s em silêncio**, reinicia;
+- nos primeiros **15 min** de silêncio, reinicia a cada 30 s; depois o intervalo dobra a partir de 60 s, até 30 min;
+- depois de **2 h** sem nenhuma tecla, para até você digitar de novo.
+
+Um dongle travado não se distingue de um teclado parado, então ele também reinicia quando você só está sem digitar. Isso é inofensivo: o teclado some e volta em cerca de 1 s. Num travamento, as teclas digitadas durante a falha podem aparecer todas de uma vez quando ele voltar.
+
+Ele lê os relatórios brutos (hidraw) das interfaces de teclado do dongle. Assim funciona também no Game Mode, onde o Steam, o gamescope ou o InputPlumber podem tomar os eventos de teclado para si. A interface de controle fica de fora, para as respostas dos comandos deste programa, como a sincronização com o HyperHDR, não contarem como atividade.
+
+```
+ak820ctl watchdog --dry-run          # só mostra o que faria
+systemctl --user status ak820-watchdog.service
+journalctl --user -u ak820-watchdog.service -f
+```
+
+Os tempos ficam em `~/.config/ak820ctl/ak820.env` (`AK820_WD_*`); depois de mudar, rode `systemctl --user restart ak820-watchdog.service`. O reset sem `sudo` vem da regra udev `70-ak820.rules`.
+
 ## Ganchos (comandos seus em eventos do teclado)
 
 Crie `hooks.json` em `~/.config/ak820ctl/` (Linux) ou `%APPDATA%\ak820ctl\` (Windows):
@@ -80,7 +102,8 @@ Crie `hooks.json` em `~/.config/ak820ctl/` (Linux) ou `%APPDATA%\ak820ctl\` (Win
 {
   "on_connect": "notify-send 'AK820' \"conectado: $AK820_DETAIL\"",
   "on_disconnect": "/home/voce/bin/ak820-caiu.sh",
-  "on_error": ""
+  "on_error": "",
+  "on_reset": ""
 }
 ```
 
@@ -88,9 +111,10 @@ Crie `hooks.json` em `~/.config/ak820ctl/` (Linux) ou `%APPDATA%\ak820ctl\` (Win
 |---|---|
 | `on_connect` | a interface conecta no teclado |
 | `on_disconnect` | a conexão com o teclado ou com o dongle cai |
-| `on_error` | um envio falha, ou a sincronização com o HyperHDR cai |
+| `on_error` | um envio falha, a sincronização com o HyperHDR cai, ou o watchdog não consegue reiniciar o dongle |
+| `on_reset` | o watchdog reiniciou o dongle |
 
-O comando roda em segundo plano pelo shell do sistema, com as variáveis `AK820_EVENT` e `AK820_DETAIL`. É o lugar para plugar ações próprias, como um script que reinicia o dongle.
+O comando roda em segundo plano pelo shell do sistema, com as variáveis `AK820_EVENT` e `AK820_DETAIL`. É o lugar para plugar ações próprias, como um aviso quando o dongle for reiniciado.
 
 ## Exemplos
 
@@ -121,7 +145,7 @@ ak820ctl --via wired screen gato.gif
    ```
    bash dist-linux/install.sh --hyperhdr
    ```
-   Sem `--hyperhdr`, só o relógio automático fica ligado.
+   Sem `--hyperhdr`, ficam ligados só o relógio automático e o watchdog do dongle. Com `--no-watchdog`, o watchdog não é ligado.
 4. Se precisar, ajuste `~/.config/ak820ctl/ak820.env` (endereço do HyperHDR, `AK820_VIA`, intervalo) e reinicie o serviço:
    ```
    systemctl --user restart ak820-hyperhdr.service
@@ -133,6 +157,7 @@ ak820ctl --via wired screen gato.gif
 |---|---|
 | `ak820-time.timer` | acerta o relógio da tela 30 s depois de entrar e a cada hora |
 | `ak820-hyperhdr.service` | mantém a luz do teclado acompanhando o HyperHDR; reinicia sozinho se cair |
+| `ak820-watchdog.service` | reinicia o dongle 2.4G quando ele trava (veja [Watchdog do dongle](#watchdog-do-dongle-linux)) |
 
 Acompanhar o que acontece:
 
@@ -152,7 +177,8 @@ Para desinstalar, rode `bash dist-linux/uninstall.sh`; com `--all`, apaga també
 O script:
 - copia `ak820ctl` e `ak820gui` para `~/.local/bin`;
 - cria o atalho "AK820 Pro" no menu;
-- instala a regra udev em `/etc/udev/rules.d/70-ak820.rules`, que libera o acesso ao teclado e ao dongle sem `sudo`.
+- instala a regra udev em `/etc/udev/rules.d/70-ak820.rules`, que libera o acesso ao teclado e ao dongle sem `sudo`, inclusive o reset do dongle usado pelo watchdog;
+- liga os serviços do relógio e do watchdog.
 
 Não usa `rpm-ostree`. A interface roda em Wayland e X11.
 

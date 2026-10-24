@@ -5,11 +5,12 @@
 //! ```json
 //! { "on_connect": "notify-send 'AK820' \"$AK820_DETAIL\"",
 //!   "on_disconnect": "/home/eu/bin/meu-script.sh",
-//!   "on_error": "" }
+//!   "on_error": "",
+//!   "on_reset": "" }
 //! ```
 //!
 //! Cada comando roda em segundo plano pelo shell do sistema (`sh -c` / `cmd /C`), com as
-//! variáveis `AK820_EVENT` (connect, disconnect, error) e `AK820_DETAIL` (texto do evento).
+//! variáveis `AK820_EVENT` (connect, disconnect, error, reset) e `AK820_DETAIL` (texto do evento).
 //! Comando vazio ou ausente = nada acontece.
 
 use std::path::PathBuf;
@@ -20,6 +21,8 @@ pub enum Event {
     Connect,
     Disconnect,
     Error,
+    /// O watchdog reiniciou o dongle.
+    Reset,
 }
 
 impl Event {
@@ -28,6 +31,7 @@ impl Event {
             Event::Connect => "on_connect",
             Event::Disconnect => "on_disconnect",
             Event::Error => "on_error",
+            Event::Reset => "on_reset",
         }
     }
 
@@ -36,6 +40,7 @@ impl Event {
             Event::Connect => "connect",
             Event::Disconnect => "disconnect",
             Event::Error => "error",
+            Event::Reset => "reset",
         }
     }
 }
@@ -67,7 +72,7 @@ impl Hooks {
 
     pub fn parse(json: &str) -> Self {
         let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else { return Self::default() };
-        let cmds = [Event::Connect, Event::Disconnect, Event::Error]
+        let cmds = [Event::Connect, Event::Disconnect, Event::Error, Event::Reset]
             .into_iter()
             .filter_map(|e| {
                 let c = v.get(e.key())?.as_str()?.trim();
@@ -109,10 +114,11 @@ mod tests {
 
     #[test]
     fn parses_hooks() {
-        let h = Hooks::parse(r#"{"on_connect":"echo oi","on_disconnect":"  ","on_error":5}"#);
+        let h = Hooks::parse(r#"{"on_connect":"echo oi","on_disconnect":"  ","on_error":5,"on_reset":"x"}"#);
         assert_eq!(h.command(Event::Connect), Some("echo oi"));
         assert_eq!(h.command(Event::Disconnect), None);
         assert_eq!(h.command(Event::Error), None);
+        assert_eq!(h.command(Event::Reset), Some("x"));
         assert!(Hooks::parse("não é json").command(Event::Connect).is_none());
     }
 }
