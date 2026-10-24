@@ -108,10 +108,11 @@ ak820ctl --via wired screen gato.gif
 
 ### Bazzite, passo a passo
 
-1. Copie o `ak820ctl-src.zip` para o Bazzite e extraia:
+1. Baixe o código:
    ```
-   unzip ak820ctl-src.zip && cd ak820ctl
+   git clone https://github.com/DarkTiengo/ak820ctl.git && cd ak820ctl
    ```
+   Para atualizar depois: `git pull` e repetir os passos 2 e 3.
 2. Compile. Isso cria um container Fedora com distrobox; a primeira vez demora alguns minutos.
    ```
    bash linux/build-bazzite.sh
