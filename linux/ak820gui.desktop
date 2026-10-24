@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AK820 Pro
+Comment=Luz, teclas e tela do teclado AJAZZ AK820 Pro
+Exec=ak820gui
+Icon=input-keyboard
+Terminal=false
+Categories=Settings;HardwareSettings;Utility;
+Keywords=ajazz;ak820;keyboard;teclado;rgb;

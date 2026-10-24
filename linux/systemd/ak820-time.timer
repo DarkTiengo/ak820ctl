@@ -1,0 +1,10 @@
+[Unit]
+Description=AK820 Pro: acerta o relógio da tela ao entrar e a cada hora
+
+[Timer]
+OnStartupSec=30s
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

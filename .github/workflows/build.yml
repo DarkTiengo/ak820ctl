@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: ak820ctl-windows-x86_64
+            ext: .exe
+          - os: ubuntu-22.04
+            artifact: ak820ctl-linux-x86_64
+            ext: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Dependências do Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev libxkbcommon-dev libwayland-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libgl1-mesa-dev
+      - run: cargo test --release
+      - run: cargo build --release
+      - name: Pacote
+        shell: bash
+        run: |
+          mkdir dist
+          cp target/release/ak820ctl${{ matrix.ext }} target/release/ak820gui${{ matrix.ext }} dist/
+          cp README.md dist/
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            cp linux/70-ak820.rules linux/install.sh linux/uninstall.sh linux/ak820gui.desktop linux/ak820.env dist/
+            mkdir -p dist/systemd && cp linux/systemd/* dist/systemd/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/

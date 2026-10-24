@@ -1,0 +1,5 @@
+/target/
+/dist/
+/dist-linux/
+*.tar.gz
+assets/*.mp4

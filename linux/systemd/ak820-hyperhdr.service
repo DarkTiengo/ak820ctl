@@ -1,0 +1,15 @@
+[Unit]
+Description=AK820 Pro: luz do teclado acompanha o HyperHDR
+Documentation=file://%h/.local/share/doc/ak820ctl/README.md
+After=graphical-session.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/ak820ctl/ak820.env
+ExecStart=%h/.local/bin/ak820ctl --via ${AK820_VIA} hyperhdr --host ${AK820_HYPERHDR_HOST} --port ${AK820_HYPERHDR_PORT} --min-gap ${AK820_MIN_GAP}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

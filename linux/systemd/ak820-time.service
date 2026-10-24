@@ -1,0 +1,7 @@
+[Unit]
+Description=AK820 Pro: acerta o relógio da tela com o PC
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/ak820ctl/ak820.env
+ExecStart=%h/.local/bin/ak820ctl --via ${AK820_VIA} time

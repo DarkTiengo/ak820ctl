@@ -1,0 +1,4 @@
+# AJAZZ AK820 Pro: deixa o usuário logado abrir os nós hidraw do teclado (cabo) e do dongle 2.4G.
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="8009", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a", TAG+="uaccess"
+KERNEL=="hidraw*", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="fdfd", TAG+="uaccess"
